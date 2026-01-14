@@ -1,4 +1,4 @@
-# SIR-INN: Physics-Informed Neural Networks for Influenza Forecasting
+#  Forecasting Seasonal Influenza Epidemics with Physics-Informed Neural Networks
 
 This repository contains the code to evaluate and use **SIR-INN**, a continuous-time epidemiological forecasting framework based on a physics-informed neural approximation of the SIR model.
 
