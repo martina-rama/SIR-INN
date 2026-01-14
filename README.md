@@ -22,6 +22,17 @@ This repository exposes steps **3, 5, and 6**, while providing a **pretrained SI
 
 ---
 
+## Reference
+
+If you use this code, please cite the following work:
+
+> Rama Martina, Santin Gabriele, Cencetti Giulia, Tizzoni Michele and Lepri Bruno, *Forecasting Seasonal Influenza Epidemics with Physics-Informed Neural Networks*,  
+> arXiv preprint arXiv:2506.03897, 2025
+
+A BibTeX entry will be added upon publication.
+
+---
+
 ## Repository Structure
 
 ```text
@@ -51,14 +62,3 @@ sir-inn/
 │
 └── experiments/
     └── run_forecast_mcmc.py
-
----
-
-## Reference
-
-If you use this code, please cite the following work:
-
-> Rama Martina, Santin Gabriele, Cencetti Giulia, Tizzoni Michele and Lepri Bruno, *Forecasting Seasonal Influenza Epidemics with Physics-Informed Neural Networks*,  
-> arXiv preprint arXiv:2506.03897, 2025
-
-A BibTeX entry will be added upon publication.
