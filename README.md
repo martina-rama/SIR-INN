@@ -52,7 +52,7 @@ sir-inn/
 └── experiments/
     └── run_forecast_mcmc.py
 
-----
+---
 
 ## Reference
 
