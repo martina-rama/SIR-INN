@@ -52,6 +52,8 @@ sir-inn/
 └── experiments/
     └── run_forecast_mcmc.py
 
+----
+
 ## Reference
 
 If you use this code, please cite the following work:
