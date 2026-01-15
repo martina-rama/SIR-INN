@@ -18,7 +18,7 @@ The SIR-INN pipeline consists of the following conceptual steps:
 5. Export of forecasts in Influcast Hub–compatible format
 
 This repository exposes steps **3, 4, and 5**, while providing a **pretrained SIR-INN model** for reproducibility. The code prioritizes epidemiological interpretability and reproducibility over implementation details related to physics-informed learning.
-All notebooks can be executed directly in Google Colab.
+All notebooks can be executed directly in Google Colab and they are intended to be executed from the repository root.
 
 ---
 
