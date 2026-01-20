@@ -47,12 +47,17 @@ sir-inn/
 ├── src/
 │   ├── models/
 │   │   └── sir_inn.py
+│   ├── data/
+│   │   └── data_loader.py
+│   ├── forecasting/
+│   │   ├── inference.py
+│   │   └── forecast_UQ.py
 │   ├── evaluation/
-│   │   ├── incidence.py
+│   │   ├── epidemiology.py
 │   │   ├── metrics.py
-│   │   ├── postprocessing.py
-│   │   └── export_influcast.py
+│   │   └── tables.py
 │   └── utils/
+│       └── io.py
 │
 ├── notebooks/
 │   ├── 01_qualitative_fit_and_incidence.ipynb
