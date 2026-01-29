@@ -44,6 +44,9 @@ sir-inn/
 ├── checkpoints/
 │   └── SIR-INN_pretrained.pth
 │
+├── data/
+│   └── SIR-INN_dataset.csv
+│
 ├── src/
 │   ├── models/
 │   │   └── sir_inn.py
@@ -51,7 +54,7 @@ sir-inn/
 │   │   └── data_loader.py
 │   ├── forecasting/
 │   │   ├── inference.py
-│   │   └── forecast_UQ.py
+│   │   └── probabilist_forecast.py
 │   ├── evaluation/
 │   │   ├── epidemiology.py
 │   │   ├── metrics.py
