@@ -62,10 +62,7 @@ sir-inn/
 │   └── utils/
 │       └── io.py
 │
-├── notebooks/
-│   ├── 01_qualitative_fit_and_incidence.ipynb
-│   ├── 02_forecast_mcmc.ipynb
-│   └── 03_save_forecasts.ipynb
-│
-└── experiments/
-    └── run_forecast_mcmc.py
+└── notebooks/
+    ├── 01_qualitative_fit_and_incidence.ipynb
+    ├── 02_forecast_mcmc.ipynb
+    └── 03_save_forecasts.ipynb
