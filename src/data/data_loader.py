@@ -1,11 +1,5 @@
 """
-Data loading and visualization utilities for influenza surveillance.
-
-This module provides helper functions to:
-- load training datasets for SIR-INN models,
-- download and preprocess influenza-like illness (ILI) surveillance data,
-- handle epidemiological week indexing across influenza seasons,
-- visualize observed ILI incidence across multiple seasons.
+Data loading and visualization utilities for italian influenza surveillance.
 
 Data are retrieved directly from official Influnet and Influcast
 repositories (without requiring local cloning) to ensure reproducibility and up-to-date access.
@@ -177,8 +171,11 @@ def plot_observed_ili_seasons(
 
     Parameters
     ----------
-    seasons : list[str]
-        List of influenza season labels (e.g. ['2023-2024', '2024-2025']).
+    seasons_data : dict
+        Dictionary mapping season labels to dicts with keys:
+            - 'week'       : np.ndarray of epidemiological week indices
+            - 'incidence'  : np.ndarray of weekly ILI incidence values
+        As returned by load_multiple_influenza_seasons().    
     country : str, optional
         Country name to be displayed in the title.
     top_padding : float, optional

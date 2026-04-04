@@ -1,12 +1,5 @@
 """
-Probabilistic forecasting utilities based on MCMC posterior samples
-and the pretrained SIR-INN model.
-
-This module handles:
-- posterior chain loading and subsampling,
-- forward simulation of incidence trajectories,
-- aggregation into prediction intervals and quantiles,
-- visualization of probabilistic forecasts.
+Probabilistic forecasting utilities based on MCMC posterior samples and the pretrained SIR-INN model.
 """
 
 # ------------------------------------------------------------------
@@ -18,104 +11,23 @@ from pathlib import Path
 repo_root = Path().resolve().parent
 sys.path.append(str(repo_root))
 
-from src.evaluation.epidemiology import incidence_from_sir
-from src.forecasting.inference import cut_times
+from src.evaluation.approximation import incidence_from_sir, evaluation_pinn
+from src.forecasting.inference import cut_times, load_mcmc_chain, load_runtimes
 from src.data.data_loader import load_influenza_season
+from src.utils.constants import t0_range,t_epi,epi_weeks,times,quantiles,rename_map
 
 import torch
 import functorch # required for higher-order autodiff in PINNs
 import pickle
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.ticker import MultipleLocator
-
-import pymcmcstat
-from pymcmcstat.propagation import define_sample_points
+from matplotlib.patches import Patch
 
 # ------------------------------------------------------------------
-# Define the quantiles of interest for the probabilistic forecasts
-quantiles = [0.01, 0.02, 0.025, 0.05, 0.10, 0.15, 0.20, 0.25,
-             0.30, 0.35, 0.40, 0.50, 0.60, 0.65, 0.70, 0.75,
-             0.80, 0.85, 0.90, 0.95, 0.975, 0.99]
-rename_map = {
-    0.01: 'q01',
-    0.02: 'q02',
-    0.025: 'q025',
-    0.05: 'q05',
-    0.10: 'q10',
-    0.15: 'q15',
-    0.20: 'q20',
-    0.25: 'q25',
-    0.30: 'q30',
-    0.35: 'q35',
-    0.40: 'q40',
-    0.50: 'q50',
-    0.60: 'q60',
-    0.65: 'q65',
-    0.70: 'q70',
-    0.75: 'q75',
-    0.80: 'q80',
-    0.85: 'q85',
-    0.90: 'q90',
-    0.95: 'q95',
-    0.975: 'q975',
-    0.99: 'q99'
-}
-# ------------------------------------------------------------------
-
-def load_mcmc_chain(
-    path,
-    sample_strategy="random",
-    burnin=500,
-    nsample=500,
-    nsimu=10000
-):
-    """
-    Load an MCMC posterior chain and optionally subsample it.
-
-    Parameters
-    ----------
-    path : str
-        Path to the saved MCMC results (.pickle file).
-    sample_strategy : str, optional
-        Strategy used to extract samples from the chain:
-        - 'tail': use samples after burn-in
-        - 'random': random subsampling from the full chain
-    burnin : int, optional
-        Number of initial samples to discard if sample_strategy='tail'.
-    nsample : int, optional
-        Number of samples to draw if sample_strategy='random'.
-    nsimu : int, optional
-        Total number of MCMC iterations (used for random subsampling).
-
-    Returns
-    -------
-    chain : ndarray
-        Array of sampled parameter vectors with shape (n_samples, n_params).
-    """
-    
-    # Load MCMC results dictionary
-    with open(path, "rb") as f:
-        results = pickle.load(f)
-
-    # Full posterior chain (nsimu x n_params)
-    chain = results["chain"]
-
-    # Use only the tail of the chain (after burn-in)
-    if sample_strategy == "tail":
-        chain = chain[burnin:]
-
-    # Randomly subsample posterior draws
-    elif sample_strategy == "random":
-        idx_sample, _ = pymcmcstat.propagation.define_sample_points(
-            nsample=nsample,
-            nsimu=nsimu
-        )
-        chain = chain[idx_sample]
-
-    return chain
 
 def forecast_pinn(x, model, times, dt, window):
     """
@@ -125,7 +37,7 @@ def forecast_pinn(x, model, times, dt, window):
     ----------
     x : array-like
         Epidemiological parameters [beta, gamma, t0].
-    model : torch.nn.Module
+    model: torch.nn.Module
         Pretrained SIR-INN model.
     times : array-like
         Continuous time grid used for PINN evaluation.
@@ -140,12 +52,8 @@ def forecast_pinn(x, model, times, dt, window):
         Predicted incidence trajectory.
     """
 
-    # Build PINN input: [time, beta, gamma]
-    input_eval = torch.tensor(np.hstack([times[:, None], np.tile([x[0], x[1]], (len(times), 1))])).float()
-
-    # Forward evaluation of the PINN
-    with torch.no_grad():
-        model_eval = model(input_eval).numpy()
+    # Forward evaluation of the PINN in all the time domain
+    model_eval = evaluation_pinn(x,model,times)
 
     # Discrete times at which incidence is computed
     t_inc = times[0:590:dt].astype('i')
@@ -158,7 +66,8 @@ def forecast_pinn(x, model, times, dt, window):
     
     return incidence_estimated
 
-def forecast_TV(time_plot_x,chain_samples,model,times,dt,window_forecast):
+
+def forecast_TV(time_plot_x,chain_samples,times,dt,window_forecast,pinn_model=None):
     """
     Generate stacked forecast trajectories over multiple posterior samples.
 
@@ -168,14 +77,16 @@ def forecast_TV(time_plot_x,chain_samples,model,times,dt,window_forecast):
         Time indices used for plotting.
     chain_samples : ndarray
         Sampled parameter vectors from the posterior.
-    model : torch.nn.Module
-        Pretrained SIR-INN model.
     times : array-like
         Continuous time grid.
     dt : int
         Time discretization.
     window_forecast : array-like
         Forecast window indices.
+    forecast_model : str
+        'pinn' or 'ode' - which model to use for forecasting.
+    pinn_model : torch.nn.Module, optional
+        Pretrained SIR-INN model (required if forecast_model='pinn').
 
     Returns
     -------
@@ -185,20 +96,28 @@ def forecast_TV(time_plot_x,chain_samples,model,times,dt,window_forecast):
         Stacked incidence values.
     """
     
-    forecast = {'pinn': [], 't': []}
+    forecast = {'t': [], 'v': []}
+    
+    # Validate inputs
+    if pinn_model is None:
+        raise ValueError("pinn_model must be provided when forecast_model='pinn'")
+    
+    forecast_fn = lambda params: forecast_pinn(
+        params, pinn_model, times, dt, len(window_forecast)
+    )
 
-    # First sample initializes arrays
+    # Initialize with first sample, then stack remaining trajectories
     forecast['t'] = time_plot_x
-    forecast['pinn'] = forecast_pinn(chain_samples[0], model, times, dt, len(window_forecast))
-
+    forecast['v'] = forecast_fn(chain_samples[0])
+    
     # Loop over remaining posterior samples
-    for params in chain_samples[1:]: # [::10]
+    for params in chain_samples[1:]:
         forecast['t'] = np.concatenate((forecast['t'], time_plot_x), axis=0)
-        forecast['pinn'] = np.concatenate((forecast['pinn'], forecast_pinn(params, model, times, dt, len(window_forecast))), axis=0)
-
+        forecast['v'] = np.concatenate((forecast['v'], forecast_fn(params)), axis=0)
+    
     # Flatten for DataFrame construction
     T = np.vstack(forecast['t'])[:, 0]
-    V = np.vstack(forecast['pinn'])[:, 0]
+    V = np.vstack(forecast['v'])[:, 0]
     
     return T,V
 
@@ -207,9 +126,9 @@ def generate_forecast_samples(
     dt_train,
     dt_forecast,
     chain_samples,
-    pinn_model,
     times,
     dt,
+    pinn_model=None,
     season_offset=42,
     season_length=28
 ):
@@ -226,12 +145,12 @@ def generate_forecast_samples(
         Forecast horizon.
     chain_samples : ndarray
         Posterior samples.
-    pinn_model : torch.nn.Module
-        Pretrained PINN.
     times : array-like
         Continuous time grid.
     dt : int
         Time discretization.
+    pinn_model : torch.nn.Module, optional
+        Pretrained PINN (required if forecast_model='pinn').
     season_offset : int, optional
         Starting epidemiological week of the season.
     season_length : int, optional
@@ -261,10 +180,10 @@ def generate_forecast_samples(
     T, V = forecast_TV(
         time_plot_x,
         chain_samples,
-        pinn_model,
         times,
         dt,
-        window_forecast
+        window_forecast,
+        pinn_model=pinn_model,
     )
 
     return T, V, window_forecast
@@ -276,7 +195,7 @@ def truncate_forecast_blocks(
     window_train
 ):
     """
-    Retain only true forecast horizons (exclude re-used training points).
+    Retain only true forecast horizons.
 
     Parameters
     ----------
@@ -285,7 +204,7 @@ def truncate_forecast_blocks(
     window_forecast : ndarray
         Full forecast window.
     window_train : ndarray
-        Time window of observation.
+        Array of observation window indices, used to determine how many samples to discard from each forecast block
 
     Returns
     -------
@@ -372,16 +291,21 @@ def compute_quantiles(
     )
 
 def run_probabilistic_forecast_season(
-    t0_range,
     chains_dir,
     dt_train,
     dt_forecast,
-    pinn_model,
-    dt,
-    times,
+    dt=7,
+    times=times,
+    t0_range=t0_range,
+    priors='uniform', 
+    pinn_model=None,
+    fit=False,
     quantiles = quantiles,
     rename_map = rename_map,
-    sample_strategy="random"
+    sample_strategy="tail",
+    nsample=1000,
+    nsim=10000
+
 ):
     """
     Run probabilistic forecasting over an entire influenza season.
@@ -396,14 +320,28 @@ def run_probabilistic_forecast_season(
         Time window of observations length.
     dt_forecast : int
         Forecast horizon.
-    pinn_model : torch.nn.Module
-        Pretrained PINN.
-    dt : int
-        Time discretization.
     times : array-like
         Continuous time grid.
+    dt : int
+        Time discretization.
+    pinn_model : torch.nn.Module, optional
+        Pretrained PINN (required if forecast_model='pinn').
+    quantiles : list
+        Quantile levels to compute.
+    rename_map : dict
+        Mapping from quantile to column name.
     sample_strategy : str
         Strategy for posterior sampling.
+    nsample : int
+        Number of samples for random strategy.
+    nsim : int
+        Total MCMC iterations.
+    priors : str, optional
+        Prior type used during inference ('uniform' or 'normal'). Default: 'uniform'.
+    fit : bool, optional
+        If True, includes the observation window in the forecast output
+        (posterior predictive interpolation). If False, only the true
+        forecast horizon is retained. Default: False.
 
     Returns
     -------
@@ -411,16 +349,27 @@ def run_probabilistic_forecast_season(
         Dictionary containing raw samples, summaries and quantiles.
     """ 
 
+    # Create output directory
+    output_subdir = f"{chains_dir}/{priors}/forecast"
+    os.makedirs(output_subdir, exist_ok=True)
+    
+    # Validate inputs
+    if pinn_model is None:
+        raise ValueError("pinn_model must be provided when forecast_model='pinn'")
+    
     # Container for all forecasts indexed by training cutoff
     forecasts = {}
 
     # Loop over rolling training windows
     for t0_train in t0_range:
         # Load MCMC posterior samples for current cutoff
-        chain_path = f"{chains_dir}/obs={t0_train}.pickle"
+        # Chains are stored in subdirectories by inference model type
+        chain_path = f"{chains_dir}/{priors}/obs={t0_train}.pickle"
         chain = load_mcmc_chain(
             chain_path,
-            sample_strategy=sample_strategy
+            sample_strategy=sample_strategy,
+            nsample=nsample,
+            nsim=nsim
         )
 
         # Generate posterior predictive trajectories
@@ -429,28 +378,29 @@ def run_probabilistic_forecast_season(
             dt_train,
             dt_forecast,
             chain,
-            pinn_model,
             times,
-            dt
+            dt,
+            pinn_model=pinn_model,
         )
 
         # Identify time window of observations (used to truncate forecasts)
         window_train = np.arange(t0_train - dt_train + 1, t0_train + 1)
         window_train = window_train[window_train >= 0]
 
-        # Keep only the true forecast horizon. This removes samples corresponding to re-used data points
-        T_tr, V_tr = truncate_forecast_blocks(
-            T, V, window_forecast, window_train
-        )
+        if fit==True:
+            # Fitting and forecasting statistics
+            T_tr,V_tr = T,V
 
+        else:
+            # Keep only the forecast horizon for the statistics. This removes samples corresponding to the observed data points
+            T_tr, V_tr = truncate_forecast_blocks(
+                T, V, window_forecast, window_train
+            )
+
+        
         # Build DataFrame of posterior predictive samples
         df = pd.DataFrame({"t": T_tr, "v": V_tr})
 
-        # Summarize uncertainty
-        # - raw samples: full posterior predictive distribution
-        # - summary_90: mean + 90% prediction interval
-        # - summary_50: mean + 50% prediction interval
-        # - quantiles: full set of quantile forecasts (for WIS, etc.)
         summary_90 = summarize_forecast(df, error_width=90)
         summary_50 = summarize_forecast(df, error_width=50)
         quant_df = compute_quantiles(df, quantiles, rename_map)
@@ -462,20 +412,24 @@ def run_probabilistic_forecast_season(
             "quantiles": quant_df,
         }
 
+        # Save the forecasts
+        with open(f"{output_subdir}/forecast_results.pickle", "wb") as f:
+            pickle.dump(forecasts, f)
+
     return forecasts
 
 def plot_probabilistic_forecasts_season(
     forecasts,
     season,
     dt_train,
-    t0_range=range(4, 22, 2),
-    t_epi=None,
-    epi_weeks=None,
+    grid_size=3,
+    t_epi=t_epi,
+    epi_weeks=epi_weeks,
     error_width=90,
     error_width_1=50,
     ylim=(0, 25),
     figsize=(13, 8),
-    dpi=300,
+    dpi=300
 ):
     """
     Plot probabilistic influenza forecasts with prediction intervals.
@@ -490,8 +444,10 @@ def plot_probabilistic_forecasts_season(
         Influenza season (e.g. '2023-2024').
     dt_train : int
         Time window of observations length.
-    t0_range : iterable
-        Training cutoffs to visualize.
+    grid_size : int
+        Controls the subplot grid layout and which cutoffs are visualized.
+        Accepted values: 2, 3, or 5. A (grid_size x grid_size) panel is produced,
+        with cutoffs selected automatically based on the season.
     t_epi : array-like
         Continuous time index for the full season.
     epi_weeks : array-like
@@ -508,6 +464,35 @@ def plot_probabilistic_forecasts_season(
         Figure DPI.
     """
 
+    if grid_size==3:
+        t0_range=range(4, 22, 2)
+    elif grid_size==5:
+        t0_range=range(3, 28)
+    elif grid_size==2 and season=='2024-2025':
+        t0_range=range(12,16)
+        #t0_range=range(10,14)
+    elif grid_size==2 and season=='2023-2024':
+        t0_range=range(8,12)
+        #t0_range=range(6,10)
+    else:
+       raise ValueError("Number of subplots not valid. Please select either 2,3 or 5 as the grid size of subplots to visualize.")
+
+    font_scale = {2: 1.0, 3: 0.95, 5: 0.7}
+    marker_scale = {2: 1.6,  3: 1.0,  5: 0.6}
+    fs = font_scale.get(grid_size, 0.85)
+    ms = marker_scale.get(grid_size, 1.0)
+    
+    label_fontsize   = int(15 * fs)
+    tick_fontsize    = int(11 * fs)
+    legend_fontsize  = int(10 * fs)
+    suptitle_fontsize = int(20 * fs)
+    major_locator    = {2: 3, 3: 5, 5: 4}.get(grid_size, 5)
+
+    markersize_main   = 6  * ms   
+    markersize_obs    = 6  * ms   
+    markersize_last   = 6  * ms   
+    linewidth_data    = 1.2 * ms
+
     # Load observed incidence
     _, incidence = load_influenza_season(season=season)
 
@@ -520,18 +505,14 @@ def plot_probabilistic_forecasts_season(
     fig = plt.figure(figsize=figsize, dpi=dpi)
 
     # Title adapts depending on forecast horizon length
-    if len(forecasts[t0_range[0]]["quantiles"]["t"])>10:
-        fig.suptitle(
-            rf"Italian Seasonal Influenza Long-Term Forecasting - {season}",
-            fontsize=20,
-            fontweight="bold",
-        )
-    else:
-        fig.suptitle(
-            rf"Italian Seasonal Influenza Forecasting - {season}",
-            fontsize=20,
-            fontweight="bold",
-        )
+    title_txt = (
+        rf"Italian Seasonal Influenza Long-Term Forecasting - {season}"
+        if len(forecasts[t0_range[0]]["quantiles"]["t"]) > 10
+        else rf"Italian Seasonal Influenza Forecasting - {season}"
+    )
+    fig.suptitle(title_txt, fontsize=suptitle_fontsize, fontweight="bold")
+    
+    n_plots = len(list(t0_range))
 
     # Loop over cutoffs (one subplot each)
     for idx, t0_train in enumerate(t0_range):
@@ -543,21 +524,28 @@ def plot_probabilistic_forecasts_season(
         data_q = forecasts[t0_train]["quantiles"]
 
         # Plot observed incidence with last observed point highlighted
-        ax = fig.add_subplot(3, 3, idx + 1)
-        a = ax.plot(t_epi, incidence, ".-", alpha=0.2)
-        ax.plot(
-            t_epi[window_train],
-            incidence[window_train],
-            ".-",
-            color=a[0].get_color(),
+        ax = fig.add_subplot(grid_size, grid_size, idx + 1)
+        
+        a = ax.plot(
+            t_epi, incidence, ".-",
+            alpha=0.2,
+            markersize=markersize_main,
+            linewidth=linewidth_data
         )
-        ax.plot(
-            t_epi[t0_train],
-            incidence[t0_train],
-            "o",
-            color=a[0].get_color(),
-        )[0].set_label("_nolegend_")
 
+        ax.plot(
+            t_epi[window_train], incidence[window_train], ".-",
+            color=a[0].get_color(),
+            markersize=markersize_obs,
+            linewidth=linewidth_data
+        )
+
+        ax.plot(
+            t_epi[t0_train], incidence[t0_train], "o",
+            color=a[0].get_color(),
+            markersize=markersize_last
+        )
+ 
         # Plot prediction intervals
         ax.fill_between(
             data_q["t"],
@@ -585,9 +573,10 @@ def plot_probabilistic_forecasts_season(
             mean_vals["t"],
             mean_vals["v"],
             color=palette[2],
+            linewidth=linewidth_data
         )
 
-        # Median
+        # Alternative: use median instead of mean
         #sns.lineplot(
         #    data=data_q,
         #    x="t",
@@ -601,24 +590,30 @@ def plot_probabilistic_forecasts_season(
         ax.set_xticklabels(epi_weeks)
         ax.xaxis.set_major_locator(MultipleLocator(5))
         ax.xaxis.set_minor_locator(MultipleLocator(1))
-        ax.tick_params(axis="both", which="major", labelsize=11)
+        ax.tick_params(axis="both", which="major", labelsize=tick_fontsize)
+        #ax.tick_params(axis="both", which="major", labelsize=11)
 
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
         
         # Legend only once to avoid clutter
         if idx == 0:
-            ax.legend(
-                ["All data", "Observations", f"{error_width}% PI", f"{error_width_1}% PI", "Mean"],
-                loc="upper right",
-            )
+            legend_elements = [
+                plt.Line2D([0], [0], color=a[0].get_color(), linestyle='-', marker='.', 
+                           markersize=legend_fontsize*0.8, alpha=0.2, label='All data'),
+                plt.Line2D([0], [0], color=a[0].get_color(), linestyle='-', marker='.', 
+                           markersize=legend_fontsize*0.8, label='Observations'),
+                Patch(facecolor=color_90, edgecolor='none', label=f'{error_width}% PI'),
+                Patch(facecolor=color_50, edgecolor='none', label=f'{error_width_1}% PI'),
+                plt.Line2D([0], [0], color=palette[2], linewidth=linewidth_data*1.3, label='Mean'),
+            ]
+            ax.legend(handles=legend_elements, loc='upper right', fontsize=legend_fontsize)
 
-        # Label axes only on outer plots
-        if idx / 3 >= 1:
-            ax.set_xlabel("Week", fontsize=15)
+        if idx + 1 > n_plots - grid_size:
+            ax.set_xlabel("Week", fontsize=label_fontsize, labelpad=8)
 
-        if idx % 3 == 0:
-            ax.set_ylabel("ILI Incidence", fontsize=15)
+        if idx % grid_size == 0:
+            ax.set_ylabel("ILI Incidence", fontsize=label_fontsize, labelpad=8)
 
         ax.set_ylim(*ylim)
 

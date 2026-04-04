@@ -1,6 +1,6 @@
 #  Forecasting Seasonal Influenza Epidemics with Physics-Informed Neural Networks
 
-This repository contains the code to evaluate and use **SIR-INN**, a continuous-time epidemiological forecasting framework based on a physics-informed neural approximation of the SIR model.
+This repository contains the code to evaluate and use **SIR-INN**, an epidemiological probabilistic forecasting framework based on a physics-informed neural approximation of the SIR model.
 
 The repository is designed to be **readable and reproducible by users with no prior knowledge of Physics-Informed Neural Networks (PINNs)**.
 For this reason, training and dataset generation are encapsulated - but explained in details in the work: [1] - while the focus is on model evaluation, parameter inference, and forecasting.
@@ -11,13 +11,12 @@ For this reason, training and dataset generation are encapsulated - but explaine
 
 The SIR-INN pipeline consists of the following conceptual steps:
 
-1. Dataset generation and model pretraining *(not exposed)*
-2. Final training of the SIR-INN model *(encapsulated)*
-3. Qualitative evaluation of the reconstructed SIR dynamics
-4. Parameter inference and probabilistic forecasting
-5. Export of forecasts in Influcast Hub–compatible format
+0. Dataset generation and model pretraining *(not exposed)*
+1. Qualitative and quantitative evaluation of SIR-INN approximation abilities   ->   `01_SIR_approximation.ipynb`
+2. SIR-INN parameters inference via MCMC                                        ->   `02_parameters_inference.ipynb`
+3. Probabilistic forecasting                                                    ->   `03_forecast.ipynb`
 
-This repository exposes steps **3, 4, and 5**, while providing a **pretrained SIR-INN model** for reproducibility. The code prioritizes epidemiological interpretability and reproducibility over implementation details related to physics-informed learning.
+This repository exposes steps **1, 2, and 3**, while providing a **pretrained SIR-INN model** for reproducibility. 
 All notebooks can be executed directly in Google Colab and they are intended to be executed from the repository root.
 
 ---
@@ -41,6 +40,9 @@ sir-inn/
 ├── requirements.txt
 ├── LICENSE
 │
+├── temp_results/
+│   └── Plot
+│
 ├── checkpoints/
 │   └── SIR-INN_pretrained.pth
 │
@@ -56,13 +58,11 @@ sir-inn/
 │   │   ├── inference.py
 │   │   └── probabilist_forecast.py
 │   ├── evaluation/
-│   │   ├── epidemiology.py
-│   │   ├── metrics.py
-│   │   └── tables.py
+│   │   └── approximation.py
 │   └── utils/
-│       └── io.py
+│       └── constants.py
 │
 └── notebooks/
-    ├── 01_qualitative_fit_and_incidence.ipynb
-    ├── 02_forecast_mcmc.ipynb
-    └── 03_save_forecasts.ipynb
+    ├── 01_SIR_approximation.ipynb
+    ├── 02_parameters_inference.ipynb
+    └── 03_forecast.ipynb
