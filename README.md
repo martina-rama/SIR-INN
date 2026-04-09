@@ -28,10 +28,14 @@ make sure to install the required packages before running any notebook:
 
 You can then execute each notebook with the following command (example for the first notebook):
 
-`!jupyter nbconvert --to notebook --execute \
+```text
+!jupyter nbconvert --to notebook --execute \
+
   --ExecutePreprocessor.kernel_name=python3 \
+
   --output /content/output_01_notebook.ipynb \
-  /content/SIR-INN/notebooks/01_SIR_approximation.ipynb`
+  
+  /content/SIR-INN/notebooks/01_SIR_approximation.ipynb
 
 The executed notebook with all outputs will be saved as `output_01_notebook.ipynb`. Figures and results will be saved in the related subfolders inside `tmp_results/`.
 
