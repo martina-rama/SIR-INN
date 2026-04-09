@@ -18,7 +18,22 @@ The SIR-INN pipeline consists of the following conceptual steps:
 Since the focus of this work is on model evaluation, parameter inference, and forecasting, this repository provides steps **1, 2, and 3**, for reproducibility. 
 For this reason, as step **0**, we only include the synthetic dataset and the **pretrained SIR-INN model**, leaving the implementation details explanation in the work: [1].
 
-All notebooks can be executed directly in Google Colab and they are intended to be executed from the repository root.
+All notebooks are intended to be executed from the repository root and can be run in Google Colab. Specifically, after cloning the repository with 
+
+`!git clone https://github.com/martina-rama/SIR-INN.git`, 
+
+make sure to install the required packages before running any notebook:
+
+`!pip install -r /content/SIR-INN/requirements.txt`.
+
+You can then execute each notebook with the following command (example for the first notebook):
+
+`!jupyter nbconvert --to notebook --execute \
+  --ExecutePreprocessor.kernel_name=python3 \
+  --output /content/output_01_notebook.ipynb \
+  /content/SIR-INN/notebooks/01_SIR_approximation.ipynb`
+
+The executed notebook with all outputs will be saved as `output_01_notebook.ipynb`. Figures and results will be saved in the related subfolders inside `tmp_results/`.
 
 ---
 
@@ -40,9 +55,6 @@ sir-inn/
 ├── README.md
 ├── requirements.txt
 ├── LICENSE
-│
-├── temp_results/
-│   └── Plot
 │
 ├── checkpoints/
 │   └── SIR-INN_pretrained.pth

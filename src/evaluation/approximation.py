@@ -73,6 +73,7 @@ def evaluation_pinn(x,model,times):
     # Build PINN input: [time, beta, gamma]
     input_eval = torch.tensor(np.hstack([times[:, None], np.tile([x[0], x[1]], (len(times), 1))])).float()
 
+    model.eval()
     # Forward evaluation of the PINN
     with torch.no_grad():
         model_eval = model(input_eval).numpy()

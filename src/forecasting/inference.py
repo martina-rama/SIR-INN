@@ -896,29 +896,25 @@ def plot_training_set_with_parameters(x_train_np, idx_train, results_dir, priors
         label="Training set"
     )
 
-    # 2023-2024
-    betas_2324, gammas_2324 = load_season_medians(results_dir+f"2023-2024/{priors}/")
-
-    # 2024-2025
-    betas_2425, gammas_2425 = load_season_medians(results_dir+f"2024-2025/{priors}/")
-
-    # Season 2023-2024
-    ax.scatter(
-        betas_2324, gammas_2324,
-        s=70, marker="o",
-        color=color_2324,
-        edgecolor="black",
-        label="2023-2024 weekly medians"
-    )
-
-    # Season 2024-2025
-    ax.scatter(
-        betas_2425, gammas_2425,
-        s=70, marker="o",
-        color=color_2425,
-        edgecolor="black",
-        label="2024-2025 weekly medians"
-    )
+    # Seasons to plot
+    seasons = [
+        ("2023-2024", color_2324),
+        ("2024-2025", color_2425),
+    ]
+    
+    for season, color in seasons:
+        season_dir = results_dir + f"{season}/{priors}/"
+        if not os.path.isdir(season_dir):
+            print(f"Warning: results for season {season} not found, skipping.")
+            continue
+        betas, gammas = load_season_medians(season_dir)
+        ax.scatter(
+            betas, gammas,
+            s=70, marker="o",
+            color=color,
+            edgecolor="black",
+            label=f"{season} weekly medians"
+        )
 
     ax.set_xlabel(r'$\beta$', fontsize=15, labelpad = 7)
     ax.set_ylabel(r'$\gamma$', fontsize=15, labelpad = 7)
