@@ -18,30 +18,7 @@ The SIR-INN pipeline consists of the following conceptual steps:
 Since the focus of this work is on model evaluation, parameter inference, and forecasting, this repository provides steps **1, 2, and 3**, for reproducibility. 
 For this reason, as step **0**, we only include the synthetic dataset and the **pretrained SIR-INN model**, leaving the implementation details explanation in the work: [1].
 
-All notebooks are intended to be executed from the repository root and can be run in Google Colab. Specifically, after cloning the repository with 
-
-`!git clone https://github.com/martina-rama/SIR-INN.git`, 
-
-make sure to install the required packages before running any notebook:
-
-`!pip install -r /content/SIR-INN/requirements.txt`.
-
-You can then execute each notebook with the following command (example for the first notebook):
-
-```
-!jupyter nbconvert --to notebook --execute \
-
-  --ExecutePreprocessor.kernel_name=python3 \
-
-  --output /content/output_01_notebook.ipynb \
-  
-  /content/SIR-INN/notebooks/01_SIR_approximation.ipynb
-```
-
-
-The executed notebook with all outputs will be saved as `output_01_notebook.ipynb`. Figures and results will be saved in the related subfolders inside `tmp_results/`.
-
----
+All notebooks are intended to be executed from the repository root. 
 
 ## Reference
 
@@ -85,3 +62,49 @@ sir-inn/
     ├── 01_SIR_approximation.ipynb
     ├── 02_parameters_inference.ipynb
     └── 03_forecast.ipynb
+```
+
+---
+
+## Running on Google Colab
+
+After cloning the repository with 
+
+`!git clone https://github.com/martina-rama/SIR-INN.git`, 
+
+install the required packages:
+
+`!pip install -r /content/SIR-INN/requirements.txt`.
+
+Run these following lines to fix the compatibility issue with pymcmcstat on Python 3.12:
+
+```
+import os, shutil
+
+# Fix 1: mcmcplot
+filepath1 = '/usr/local/lib/python3.12/dist-packages/mcmcplot/utilities.py'
+# Fix 2: pymcmcstat
+filepath2 = '/usr/local/lib/python3.12/dist-packages/pymcmcstat/plotting/utilities.py'
+
+for filepath in [filepath1, filepath2]:
+    with open(filepath, 'r') as f:
+        content = f.read()
+    content = content.replace('from scipy import pi, sin, cos', 'from numpy import pi, sin, cos')
+    with open(filepath, 'w') as f:
+        f.write(content)
+    pycache = os.path.join(os.path.dirname(filepath), '__pycache__')
+    shutil.rmtree(pycache, ignore_errors=True)
+```
+
+You can then execute each notebook with the following command (example for the first notebook):
+
+```
+!jupyter nbconvert --to notebook --execute \
+  --ExecutePreprocessor.kernel_name=python3 \
+  --output /content/output_01_notebook.ipynb \
+  /content/SIR-INN/notebooks/01_SIR_approximation.ipynb
+```
+
+The executed notebook with all outputs will be saved as `output_01_notebook.ipynb`. Figures and results will be saved in the related subfolders inside `tmp_results/`.
+
+---
