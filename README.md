@@ -2,7 +2,7 @@
 
 This repository contains the code to evaluate and use **SIR-INN**, an epidemiological probabilistic forecasting framework based on a physics-informed neural approximation of the SIR model.
 
-The repository is designed to be **readable and reproducible by users with no prior knowledge of Physics-Informed Neural Networks (PINNs)**. It contains the data, the model, and the code of [this work](https://arxiv.org/abs/2506.03897).
+The repository is designed to be **readable and reproducible by users with no prior knowledge of Physics-Informed Neural Networks (PINNs)**. It contains the synthetic data, the model, and the code of [this work](https://arxiv.org/abs/2506.03897). To see the whole Influcast hub with data and team forecasts, and to reproduce the quantitative results reported in Table 1 and Table 2, please refer to the [Influcast GitHub repository](https://github.com/Predizioni-Epidemiologiche-Italia/Influcast).  
 
 ---
 
