@@ -192,6 +192,21 @@ def plot_sir_inn_learning(
     n_cols = 3
     n_rows = 4
 
+    # Compute the global maximum value of I and incidence for all the subplots
+    if plot_type in ('I', 'incidence'):
+        global_max = 0.0
+        for idx in idx_plot:
+            idx_p = np.where(idx_train == idx)[0]
+            if plot_type == 'I':
+                local_max = max(I_obs[idx_p].max(), I_pred[idx_p].max())
+            else:
+                times = np.arange(len(idx_p))
+                inc_true = incidence_from_sir(S_obs[idx_p], times)
+                inc_pred = incidence_from_sir(S_pred[idx_p], times)
+                local_max = max(inc_true.max(), inc_pred.max())
+            global_max = max(global_max, local_max)
+        y_top = global_max * 1.05
+
     # Grid of subplots (up to 12 scenarios)
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 12))
     title_map = {
@@ -232,6 +247,7 @@ def plot_sir_inn_learning(
         elif plot_type == 'I':
             ax.plot(x_train_np[idx_p, 0], I_obs[idx_p], color=SIR_colors[1], lw=2)
             ax.plot(x_train_np[idx_p, 0], I_pred[idx_p], '--', color=SIR_colors[1], lw=2)
+            ax.set_ylim(0, y_top)
             ax.set_title(r'$R_0$=%.2f' % R0)
 
         # Plot reconstructed ILI incidence
@@ -244,6 +260,7 @@ def plot_sir_inn_learning(
 
             ax.plot(x_train_np[idx_p, 0], inc_true, color=color_true_inc, lw=2.5)
             ax.plot(x_train_np[idx_p, 0], inc_pred, '--', color=color_pred_inc, lw=2.5)
+            ax.set_ylim(0, y_top)
             ax.set_title(r'$R_0$=%.2f' % R0)
 
         ax.grid(True)
