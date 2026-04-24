@@ -57,6 +57,8 @@ sir-inn/
 │   │   └── approximation.py
 │   └── utils/
 │       └── constants.py
+|
+├── tmp_results/
 │
 └── notebooks/
     ├── 01_SIR_approximation.ipynb
@@ -76,26 +78,6 @@ install the required packages:
 
 `!pip install -r /content/SIR-INN/requirements.txt`.
 
-Run these following lines to fix the compatibility issue with pymcmcstat on Python 3.12:
-
-```
-import os, shutil
-
-# Fix 1: mcmcplot
-filepath1 = '/usr/local/lib/python3.12/dist-packages/mcmcplot/utilities.py'
-# Fix 2: pymcmcstat
-filepath2 = '/usr/local/lib/python3.12/dist-packages/pymcmcstat/plotting/utilities.py'
-
-for filepath in [filepath1, filepath2]:
-    with open(filepath, 'r') as f:
-        content = f.read()
-    content = content.replace('from scipy import pi, sin, cos', 'from numpy import pi, sin, cos')
-    with open(filepath, 'w') as f:
-        f.write(content)
-    pycache = os.path.join(os.path.dirname(filepath), '__pycache__')
-    shutil.rmtree(pycache, ignore_errors=True)
-```
-
 You can then execute each notebook with the following command (example for the first notebook):
 
 ```
@@ -105,6 +87,6 @@ You can then execute each notebook with the following command (example for the f
   /content/SIR-INN/notebooks/01_SIR_approximation.ipynb
 ```
 
-The executed notebook with all outputs will be saved as `output_01_notebook.ipynb`. Figures and results will be saved in the related subfolders inside `tmp_results/`.
+The executed notebook with all the outputs will be saved as `output_01_notebook.ipynb`. Figures and results will be saved in the related subfolders inside `tmp_results/`.
 
 ---
