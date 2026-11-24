@@ -2,7 +2,7 @@
 
 This repository contains the code to evaluate and use **SIR-INN**, an epidemiological probabilistic forecasting framework based on a physics-informed neural approximation of the SIR model.
 
-The repository is designed to be **readable and reproducible by users with no prior knowledge of Physics-Informed Neural Networks (PINNs)**. It contains the synthetic data, the model, and the code of [this work](https://arxiv.org/abs/2506.03897). To see the whole Influcast hub with data and team forecasts, and to reproduce the quantitative results — produced with the R package `scoringutils` — reported in Table 1 and Table 2, please refer to the [Influcast GitHub repository](https://github.com/Predizioni-Epidemiologiche-Italia/Influcast).  
+The repository is designed to be **readable and reproducible by users with no prior knowledge of Physics-Informed Neural Networks (PINNs)**. It contains the synthetic data, the model, and the code of [this work](https://doi.org/10.1016/j.epidem.2026.100919) (preprint on [arXiv](https://arxiv.org/abs/2506.03897)). To see the whole Influcast hub with data and team forecasts, and to reproduce the quantitative results — produced with the R package `scoringutils` — reported in Table 1 and Table 2, please refer to the [Influcast GitHub repository](https://github.com/Predizioni-Epidemiologiche-Italia/Influcast).  
 
 ---
 
@@ -24,9 +24,19 @@ All notebooks are intended to be executed from the repository root.
 
 If you use this code, please cite the following work:
 
-[1] Rama Martina, Santin Gabriele, Cencetti Giulia, Tizzoni Michele and Lepri Bruno, *Forecasting Seasonal Influenza Epidemics with Physics-Informed Neural Networks*, arXiv preprint arXiv:2506.03897, 2025.
+[1] Rama Martina, Santin Gabriele, Cencetti Giulia, Tizzoni Michele and Lepri Bruno, *Forecasting Seasonal Influenza Epidemics with Physics-Informed Neural Networks*, Epidemics 55 (2026) 100919, [doi:10.1016/j.epidem.2026.100919](https://doi.org/10.1016/j.epidem.2026.100919). Preprint: [arXiv:2506.03897](https://arxiv.org/abs/2506.03897).
 
-A BibTeX entry will be added upon publication.
+```bibtex
+@article{rama2026forecasting,
+  title   = {Forecasting seasonal influenza epidemics with physics-informed neural networks},
+  author  = {Rama, Martina and Santin, Gabriele and Cencetti, Giulia and Tizzoni, Michele and Lepri, Bruno},
+  journal = {Epidemics},
+  volume  = {55},
+  pages   = {100919},
+  year    = {2026},
+  doi     = {10.1016/j.epidem.2026.100919}
+}
+```
 
 ---
 
